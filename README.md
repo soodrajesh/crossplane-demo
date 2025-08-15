@@ -39,12 +39,17 @@ This project demonstrates Crossplane's capabilities for managing cloud infrastru
 # Install minikube (macOS)
 brew install minikube
 
-# Start minikube with Docker driver
-minikube start --driver=docker --memory=4096 --cpus=2
+# Start minikube with adequate resources for Crossplane
+minikube start --driver=docker --memory=6144 --cpus=4 --disk-size=20g
+
+# Enable required addons
+minikube addons enable ingress
+minikube addons enable metrics-server
 
 # Verify cluster is running
 minikube status
 kubectl cluster-info
+kubectl get nodes
 ```
 
 ### 2. Configure kubectl Context
@@ -54,8 +59,12 @@ kubectl cluster-info
 kubectl config current-context
 # Should show: minikube
 
-# Check cluster nodes
-kubectl get nodes
+# If not, set context
+kubectl config use-context minikube
+
+# Verify cluster access
+kubectl get namespaces
+kubectl get pods --all-namespaces
 ```
 
 ## 🚀 Complete Setup Guide
@@ -77,67 +86,139 @@ kubectl get pods -A
 helm repo add crossplane-stable https://charts.crossplane.io/stable
 helm repo update
 
-# Install Crossplane
+# Install Crossplane with proper configuration
 helm install crossplane crossplane-stable/crossplane \
   --namespace crossplane-system \
   --create-namespace \
   --wait
+
+# Verify Crossplane installation
+kubectl get pods -n crossplane-system
+kubectl get crd | grep crossplane
+
+# Wait for Crossplane to be fully ready
+kubectl wait --for=condition=ready pod -l app=crossplane --namespace crossplane-system --timeout=300s
 ```
 
 ### Step 3: Install AWS Provider
 
 ```bash
-# Install AWS Provider
+# Apply AWS provider configuration
 kubectl apply -f config/providers/aws-provider.yaml
 
-# Wait for provider to be ready
-kubectl wait provider.pkg.crossplane.io/provider-aws --for=condition=Healthy --timeout=2m
+# Monitor provider installation
+kubectl get providers
+kubectl describe provider provider-aws
+
+# Wait for provider to be healthy (this may take 5-10 minutes)
+kubectl wait --for=condition=healthy provider.pkg.crossplane.io/provider-aws --timeout=600s
+
+# Verify provider CRDs are installed
+kubectl get crd | grep aws
 ```
 
 ### Step 4: Configure AWS Credentials
 
 ```bash
-# Create AWS credentials secret (uses raj-private profile automatically)
-# Note: The install script handles this automatically and removes credentials file
-./scripts/install.sh
+# Create AWS credentials secret using your raj-private profile
+aws configure list --profile raj-private
+
+# Extract credentials and create secret
+kubectl create secret generic aws-creds -n crossplane-system \
+  --from-literal=creds="[default]
+aws_access_key_id = $(aws configure get aws_access_key_id --profile raj-private)
+aws_secret_access_key = $(aws configure get aws_secret_access_key --profile raj-private)
+region = eu-west-1"
+
+# Verify secret creation
+kubectl get secret aws-creds -n crossplane-system
+
+# Apply ProviderConfig
+kubectl apply -f config/aws/provider-config.yaml
+
+# Verify ProviderConfig
+kubectl get providerconfig
+kubectl describe providerconfig default
 ```
 
-### Step 5: Deploy Infrastructure Components
+### Step 5: Deploy Infrastructure
 
 ```bash
-# Deploy infrastructure in correct order
+# Deploy infrastructure in dependency order
+
+# 1. VPC and networking (using existing infrastructure)
+echo "Deploying VPC and networking..."
 kubectl apply -f config/infrastructure/vpc.yaml
 kubectl apply -f config/infrastructure/subnets.yaml
+
+# Wait for VPC to be ready
+kubectl wait --for=condition=ready vpc.ec2.aws.crossplane.io/crossplane-demo-vpc --timeout=300s
+
+# 2. Security groups
+echo "Deploying security groups..."
 kubectl apply -f config/infrastructure/security-groups.yaml
 kubectl apply -f config/infrastructure/db-security-group.yaml
-kubectl apply -f config/infrastructure/rds-subnet-group.yaml
+
+# 3. RDS components
+echo "Deploying RDS infrastructure..."
 kubectl apply -f config/infrastructure/rds-secret.yaml
-kubectl apply -f config/infrastructure/s3-bucket.yaml
+kubectl apply -f config/infrastructure/rds-subnet-group.yaml
+
+# Wait for subnet group
+kubectl wait --for=condition=ready dbsubnetgroup.rds.aws.crossplane.io/crossplane-demo-subnet-group --timeout=300s
+
+# Deploy RDS instance (this takes 10-15 minutes)
+echo "Deploying RDS instance (this will take 10-15 minutes)..."
 kubectl apply -f config/infrastructure/rds-instance.yaml
 
-# Wait for resources to be ready (RDS takes 10-15 minutes)
-kubectl get managed
+# 4. S3 bucket
+echo "Deploying S3 bucket..."
+kubectl apply -f config/infrastructure/s3-bucket.yaml
 ```
 
 ### Step 6: Deploy Sample Application
 
 ```bash
+# Create namespace for sample application
+kubectl create namespace sample-app --dry-run=client -o yaml | kubectl apply -f -
+
 # Deploy the sample application
-kubectl apply -f config/applications/
+kubectl apply -f config/applications/sample-app.yaml
+
+# Wait for application to be ready
+kubectl wait --for=condition=ready pod -l app=sample-app -n sample-app --timeout=300s
+
+# Check application status
+kubectl get all -n sample-app
+kubectl get pods -n sample-app -o wide
+kubectl get svc -n sample-app
+
+# Check application logs
+kubectl logs -l app=sample-app -n sample-app
 ```
 
 ### Step 7: Access the Application on Minikube
 
 ```bash
-# For minikube, use port-forward to access the app
-kubectl port-forward -n sample-app svc/sample-app-service 8080:80
+# Method 1: Port-forward (recommended for testing)
+kubectl port-forward -n sample-app svc/sample-app-service 8080:80 &
 
 # Test the application
 curl http://localhost:8080
-# Or open in browser: http://localhost:8080
+open http://localhost:8080  # macOS - opens in browser
 
-# Alternative: Get minikube service URL
+# Method 2: Minikube service (gets external URL)
 minikube service sample-app-service -n sample-app --url
+
+# Method 3: Minikube tunnel (for LoadBalancer services)
+# Run in separate terminal
+minikube tunnel
+
+# Then check external IP
+kubectl get svc -n sample-app
+
+# Stop port-forward when done
+killall kubectl  # or use Ctrl+C in the port-forward terminal
 ```
 
 ## 📁 Project Structure
