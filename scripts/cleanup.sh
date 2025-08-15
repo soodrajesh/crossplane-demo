@@ -68,34 +68,37 @@ delete_sample_app() {
 delete_infrastructure() {
     print_status "Deleting infrastructure in dependency order..."
     
-    # Delete RDS instance first (may take time)
+    # Delete RDS instance first (may take time) - run in background
     print_warning "Deleting RDS instance (this may take 10-15 minutes)..."
-    kubectl delete -f ../config/infrastructure/rds-instance.yaml --ignore-not-found=true
+    kubectl delete -f ../config/infrastructure/rds-instance.yaml --ignore-not-found=true --wait=false
     
-    # Delete RDS subnet group
-    print_status "Deleting RDS subnet group..."
-    kubectl delete -f ../config/infrastructure/rds-subnet-group.yaml --ignore-not-found=true
+    # Delete other resources that don't depend on RDS
+    print_status "Deleting S3 bucket..."
+    kubectl delete -f ../config/infrastructure/s3-bucket.yaml --ignore-not-found=true
     
     # Delete security groups
     print_status "Deleting security groups..."
     kubectl delete -f ../config/infrastructure/security-groups.yaml --ignore-not-found=true
     kubectl delete -f ../config/infrastructure/db-security-group.yaml --ignore-not-found=true
-    
-    # Delete S3 bucket
-    print_status "Deleting S3 bucket..."
-    kubectl delete -f ../config/infrastructure/s3-bucket.yaml --ignore-not-found=true
     kubectl delete securitygroup.ec2.aws.crossplane.io/crossplane-demo-sg-db --ignore-not-found=true
+    
+    # Delete RDS subnet group (wait a bit for RDS to start deleting)
+    print_status "Deleting RDS subnet group..."
+    kubectl delete -f ../config/infrastructure/rds-subnet-group.yaml --ignore-not-found=true --wait=false
     
     # Delete subnets (existing - just remove from Crossplane management)
     print_status "Removing subnets from Crossplane management..."
-    kubectl delete subnet.ec2.aws.crossplane.io/crossplane-demo-subnet-public-1 --ignore-not-found=true
-    kubectl delete subnet.ec2.aws.crossplane.io/crossplane-demo-subnet-public-2 --ignore-not-found=true
+    kubectl delete subnet.ec2.aws.crossplane.io/crossplane-demo-subnet-public-1 --ignore-not-found=true --timeout=30s || true
+    kubectl delete subnet.ec2.aws.crossplane.io/crossplane-demo-subnet-public-2 --ignore-not-found=true --timeout=30s || true
     
     # Delete VPC (existing - just remove from Crossplane management)
     print_status "Removing VPC from Crossplane management..."
-    kubectl delete vpc.ec2.aws.crossplane.io/crossplane-demo-vpc --ignore-not-found=true
+    kubectl delete vpc.ec2.aws.crossplane.io/crossplane-demo-vpc --ignore-not-found=true --timeout=30s || {
+        print_warning "VPC deletion timed out - continuing with cleanup"
+    }
     
-    print_success "Infrastructure deleted"
+    print_warning "RDS deletion continues in background (check AWS console)"
+    print_success "Infrastructure deletion initiated"
 }
 
 # Function to delete secrets
