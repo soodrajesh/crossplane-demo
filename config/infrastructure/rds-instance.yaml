@@ -1,0 +1,24 @@
+# RDS PostgreSQL Instance for the demo
+# This creates a small PostgreSQL database instance
+
+apiVersion: database.aws.crossplane.io/v1beta1
+kind: RDSInstance
+metadata:
+  name: crossplane-demo-rds
+spec:
+  forProvider:
+    region: eu-west-1
+    dbInstanceClass: db.t3.micro
+    engine: postgres
+    engineVersion: "13.22"
+    allocatedStorage: 20
+    storageType: gp2
+    dbName: crossplanedemo
+    masterUsername: dbuser
+    dbSubnetGroupName: crossplane-demo-subnet-group
+    vpcSecurityGroupIds:
+      - sg-04336b4c39bf8482c
+    skipFinalSnapshotBeforeDeletion: true
+    deletionProtection: false
+  providerConfigRef:
+    name: aws-provider-config

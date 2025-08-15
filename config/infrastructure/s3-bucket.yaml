@@ -1,0 +1,16 @@
+# S3 Bucket for the demo
+# This creates a simple S3 bucket for storing demo data
+
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: crossplane-demo-bucket-2024-ireland
+  annotations:
+    crossplane.io/external-name: crossplane-demo-bucket-2024-ireland
+spec:
+  forProvider:
+    locationConstraint: eu-west-1
+    versioningConfiguration:
+      status: Enabled
+  providerConfigRef:
+    name: aws-provider-config

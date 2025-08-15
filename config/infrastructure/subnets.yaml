@@ -1,0 +1,40 @@
+# Subnet Configuration for the demo
+# These use existing subnets in Ireland region
+
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: Subnet
+metadata:
+  name: crossplane-demo-subnet-public-1
+  annotations:
+    crossplane.io/external-name: subnet-0c6412161da6c2140
+spec:
+  forProvider:
+    region: eu-west-1
+    availabilityZone: eu-west-1a
+    cidrBlock: 172.31.16.0/20
+    vpcId: vpc-09d94714556bccadd
+    mapPublicIpOnLaunch: true
+    tags:
+      Name: crossplane-demo-subnet-public-1
+      Environment: demo
+  providerConfigRef:
+    name: aws-provider-config
+---
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: Subnet
+metadata:
+  name: crossplane-demo-subnet-public-2
+  annotations:
+    crossplane.io/external-name: subnet-0c0979f8c1e728d55
+spec:
+  forProvider:
+    region: eu-west-1
+    availabilityZone: eu-west-1b
+    cidrBlock: 172.31.0.0/20
+    vpcId: vpc-09d94714556bccadd
+    mapPublicIpOnLaunch: true
+    tags:
+      Name: crossplane-demo-subnet-public-2
+      Environment: demo
+  providerConfigRef:
+    name: aws-provider-config

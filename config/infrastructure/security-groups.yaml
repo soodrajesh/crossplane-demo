@@ -1,0 +1,33 @@
+# Security Group for Application
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: SecurityGroup
+metadata:
+  name: crossplane-demo-sg-app
+spec:
+  forProvider:
+    region: eu-west-1
+    vpcId: vpc-09d94714556bccadd
+    groupName: crossplane-demo-sg-app
+    description: Security group for Crossplane demo application
+    ingress:
+      - fromPort: 80
+        toPort: 80
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+      - fromPort: 443
+        toPort: 443
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+    egress:
+      - fromPort: 0
+        toPort: 0
+        protocol: "-1"
+        cidrBlocks:
+          - 0.0.0.0/0
+    tags:
+      Name: crossplane-demo-sg-app
+      Environment: demo
+  providerConfigRef:
+    name: aws-provider-config

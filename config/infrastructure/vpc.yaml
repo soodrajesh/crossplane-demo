@@ -1,0 +1,20 @@
+# VPC Configuration for the demo
+# This uses an existing VPC in Ireland region
+
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: VPC
+metadata:
+  name: crossplane-demo-vpc
+  annotations:
+    crossplane.io/external-name: vpc-09d94714556bccadd
+spec:
+  forProvider:
+    region: eu-west-1
+    cidrBlock: 172.31.0.0/16
+    enableDnsHostnames: true
+    enableDnsSupport: true
+    tags:
+      Name: crossplane-demo-vpc
+      Environment: demo
+  providerConfigRef:
+    name: aws-provider-config

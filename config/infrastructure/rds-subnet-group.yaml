@@ -1,0 +1,18 @@
+# RDS Subnet Group for the demo
+apiVersion: database.aws.crossplane.io/v1beta1
+kind: DBSubnetGroup
+metadata:
+  name: crossplane-demo-subnet-group
+spec:
+  forProvider:
+    region: eu-west-1
+    dbSubnetGroupName: crossplane-demo-subnet-group
+    dbSubnetGroupDescription: Subnet group for Crossplane demo RDS
+    subnetIds:
+      - subnet-0c6412161da6c2140
+      - subnet-0c0979f8c1e728d55
+    tags:
+      Name: crossplane-demo-subnet-group
+      Environment: demo
+  providerConfigRef:
+    name: aws-provider-config

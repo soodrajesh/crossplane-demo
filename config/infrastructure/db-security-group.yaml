@@ -1,0 +1,27 @@
+# Security Group for Database
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: SecurityGroup
+metadata:
+  name: crossplane-demo-sg-db
+spec:
+  forProvider:
+    region: eu-west-1
+    vpcId: vpc-09d94714556bccadd
+    groupName: crossplane-demo-sg-db
+    description: Security group for Crossplane demo database
+    ingress:
+      - fromPort: 5432
+        toPort: 5432
+        protocol: tcp
+        sourceSecurityGroupId: sg-07b8c2e59fb1afebb
+    egress:
+      - fromPort: 0
+        toPort: 0
+        protocol: "-1"
+        cidrBlocks:
+          - 0.0.0.0/0
+    tags:
+      Name: crossplane-demo-sg-db
+      Environment: demo
+  providerConfigRef:
+    name: aws-provider-config
