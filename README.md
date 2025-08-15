@@ -357,6 +357,25 @@ cd scripts && bash cleanup.sh
 
 **Note**: The cleanup script now uses correct relative paths and can be run from either the project root or the scripts directory.
 
+### Stop Minikube
+
+```bash
+# Stop the minikube cluster
+minikube stop
+
+# Check cluster status
+minikube status
+
+# Start cluster again when needed
+minikube start
+
+# Delete cluster entirely (fresh start)
+minikube delete
+
+# View all minikube profiles
+minikube profile list
+```
+
 ## 📊 Monitoring
 
 ### Real-time Resource Monitoring
