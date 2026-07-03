@@ -15,6 +15,10 @@ spec:
     storageType: gp2
     dbName: crossplanedemo
     masterUsername: dbuser
+    masterPasswordSecretRef:
+      namespace: crossplane-system
+      name: rds-password
+      key: password
     dbSubnetGroupName: crossplane-demo-subnet-group
     vpcSecurityGroupIds:
       - sg-04336b4c39bf8482c
